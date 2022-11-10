@@ -175,6 +175,22 @@ defmodule PhoenixETag do
     update_in conn.assigns, &Enum.into(assigns, &1)
   end
 
+  def if_stale2(conn, checks, fun) do
+    etag = checks[:etag]
+    modified = checks[:last_modified]
+
+    conn =
+      conn
+      |> put_etag(etag)
+      |> put_last_modified(modified)
+
+    if stale?(conn, etag, modified) do
+      fun.(conn, Map.take(conn.assigns, [:layout]))
+    else
+      Plug.Conn.send_resp(conn, 304, "")
+    end
+  end
+
   defp if_stale(conn, view, template, fun) do
     checks = view.stale_checks(template, conn.assigns)
     etag = checks[:etag]
